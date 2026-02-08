@@ -5,6 +5,25 @@
 ### Инструкция:
 https://kubernetes.io/docs/tasks/tools/install-kubectl-linux/
 
+
+#### На докере требуются дополнительные настройки. Лучше контейнеризировать через containerd
+
+##### установка containerd 
+```bash
+sudo apt-get install -y containerd
+sudo mkdir -p /etc/containerd
+containerd config default | sudo tee /etc/containerd/config.toml
+sudo sed -i 's/SystemdCgroup = false/SystemdCgroup = true/' /etc/containerd/config.toml
+sudo systemctl restart containerd
+sudo systemctl enable containerd
+```
+##### Проверить
+```bash
+sudo systemctl status containerd
+ls -la /var/run/containerd/containerd.sock
+```
+
+
 ##### На всех нодах (master, worker) ОБЯЗАТЕЛЬНО выполнить.
 #### Шаг 1.1: Отключение swap (обязательно для Kubernetes)
 ```bash
@@ -75,9 +94,21 @@ kubelet --version
  
 ## 2. МАСТЕР нода
 
+
+
 #### Шаг 2.1: Инициализация кластера (Flannel любит 10.244.0.0/16)
+##### ЛУЧШЕ ТАК ДЕЛАТЬ: 
 ```bash
-sudo kubeadm init --pod-network-cidr=10.244.0.0/16
+sudo kubeadm init \
+--pod-network-cidr=10.244.0.0/16 \
+--cri-socket=unix:///var/run/containerd/containerd.sock \
+--ignore-preflight-errors=Port-6443 \
+--upload-certs
+```  
+##### В результате в конце будет СОХРАНЯЕМ ТОКЕН в блокнот на host(Каждый раз выдача разная, ниже - пример): 
+```bash
+kubeadm join 85.239.53.166:6443 --token 3bwvyf.n7krgs7cpq62aalu \
+--discovery-token-ca-cert-hash sha256:acf4df6056c7fa6f9de57bf1086b6565ef0a996b8752cadd6bf99f4526f1076c 
 ```
 
 #### Шаг 2.2: Настройка kubectl
@@ -85,7 +116,14 @@ sudo kubeadm init --pod-network-cidr=10.244.0.0/16
 mkdir -p $HOME/.kube
 sudo cp -i /etc/kubernetes/admin.conf $HOME/.kube/config
 sudo chown $(id -u):$(id -g) $HOME/.kube/config
+echo "export KUBECONFIG=$HOME/.kube/config" >> ~/.bashrc
+source ~/.bashrc
 ```
+##### проверка : 
+```bash
+kubectl cluster-info
+```
+
 
 #### Шаг 2.3: Установка Flannel (самый простой способ)
 ```bash
@@ -96,20 +134,57 @@ kubectl apply -f https://github.com/flannel-io/flannel/releases/latest/download/
 ```bash
 kubectl get pods -n kube-system -l app=flannel
 ```
-
-
-## 3. ПРОВЕРКА МАСТЕР Ноды 
-#### ШАГ 3.1: проверяем запущенные компоненты
+ 
+#### ШАГ 2.4: проверяем запущенные компоненты
 
 ```bash
 sudo crictl ps
 ```
-#### Должны быть запущены в статусе 'Running' следующие сервисы :
+#### Должны обязательно быть запущены в статусе 'Running' следующие сервисы:
 - kube-scheduler 
 - coredns ( возможно в нескольких экземплярах)
 - kube-controller-manager
 - kube-apiserver 
-- etcd    
+- etcd  
+
+NAMESPACE      NAME                                 READY   STATUS    RESTARTS   AGE
+kube-flannel   kube-flannel-ds-rw2kq                1/1     Running   0          8m47s
+kube-system    coredns-7d764666f9-gfh24             1/1     Running   0          15m
+kube-system    coredns-7d764666f9-z7kt4             1/1     Running   0          15m
+kube-system    etcd-master-k8s                      1/1     Running   6          15m
+kube-system    kube-apiserver-master-k8s            1/1     Running   5          15m
+kube-system    kube-controller-manager-master-k8s   1/1     Running   8          15m
+kube-system    kube-proxy-7f78j                     1/1     Running   0          15m
+kube-system    kube-scheduler-master-k8s            1/1     Running   7          15m
+
+
+ 
+
+#### ШАГ 3.2: настрока kubctl
+
+```bash
+mkdir -p $HOME/.kube
+sudo cp -i /etc/kubernetes/admin.conf $HOME/.kube/config
+sudo chown $(id -u):$(id -g) $HOME/.kube/config
+```
+проверка:
+```bash
+kubectl cluster-info | grep 'Kubernetes control plane'
+```
+###### вывод примерно такой (85.239.53.188 внешний IP Мастер ноды):
+```bash
+Kubernetes control plane is running at https://85.239.53.188:6443
+```
+
+
+
+
+Then you can join any number of worker nodes by running the following on each as root:
+
+kubeadm join 85.239.53.166:6443 --token 3fbdug.txnuih7gsow6giaa \
+	--discovery-token-ca-cert-hash sha256:37fa3f96bc466633f26a432c4c896a9ead1cc6b7077410c191e878969cbecbef 
+ 
+
 
 
 
