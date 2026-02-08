@@ -93,11 +93,7 @@ kubelet --version
 ```
  
 ## 2. МАСТЕР нода
-
-
-
 #### Шаг 2.1: Инициализация кластера (Flannel любит 10.244.0.0/16)
-##### ЛУЧШЕ ТАК ДЕЛАТЬ: 
 ```bash
 sudo kubeadm init \
 --pod-network-cidr=10.244.0.0/16 \
@@ -107,9 +103,10 @@ sudo kubeadm init \
 ```  
 ##### В результате в конце будет СОХРАНЯЕМ ТОКЕН в блокнот на host(Каждый раз выдача разная, ниже - пример): 
 ```bash
-kubeadm join 85.239.53.166:6443 --token 3bwvyf.n7krgs7cpq62aalu \
+kubeadm join 85.239.53.102:6443 --token 3bwvyf.n7krgs7cpq62aalu \
 --discovery-token-ca-cert-hash sha256:acf4df6056c7fa6f9de57bf1086b6565ef0a996b8752cadd6bf99f4526f1076c 
 ```
+ 
 
 #### Шаг 2.2: Настройка kubectl
 ```bash
@@ -142,51 +139,20 @@ sudo crictl ps
 ```
 #### Должны обязательно быть запущены в статусе 'Running' следующие сервисы:
 - kube-scheduler 
-- coredns ( возможно в нескольких экземплярах)
+- coredns
+- coredns ( 2 экземпляра)
 - kube-controller-manager
 - kube-apiserver 
 - etcd  
-
-NAMESPACE      NAME                                 READY   STATUS    RESTARTS   AGE
-kube-flannel   kube-flannel-ds-rw2kq                1/1     Running   0          8m47s
-kube-system    coredns-7d764666f9-gfh24             1/1     Running   0          15m
-kube-system    coredns-7d764666f9-z7kt4             1/1     Running   0          15m
-kube-system    etcd-master-k8s                      1/1     Running   6          15m
-kube-system    kube-apiserver-master-k8s            1/1     Running   5          15m
-kube-system    kube-controller-manager-master-k8s   1/1     Running   8          15m
-kube-system    kube-proxy-7f78j                     1/1     Running   0          15m
-kube-system    kube-scheduler-master-k8s            1/1     Running   7          15m
-
-
+- kube-flannel
  
-
-#### ШАГ 3.2: настрока kubctl
-
-```bash
-mkdir -p $HOME/.kube
-sudo cp -i /etc/kubernetes/admin.conf $HOME/.kube/config
-sudo chown $(id -u):$(id -g) $HOME/.kube/config
-```
-проверка:
-```bash
-kubectl cluster-info | grep 'Kubernetes control plane'
-```
-###### вывод примерно такой (85.239.53.188 внешний IP Мастер ноды):
-```bash
-Kubernetes control plane is running at https://85.239.53.188:6443
-```
-
-
-
-
-Then you can join any number of worker nodes by running the following on each as root:
-
-kubeadm join 85.239.53.166:6443 --token 3fbdug.txnuih7gsow6giaa \
-	--discovery-token-ca-cert-hash sha256:37fa3f96bc466633f26a432c4c896a9ead1cc6b7077410c191e878969cbecbef 
  
-
-
-
+## 3. WORKER нода
+##### Подключаемся к мастеру , выполняем сохраненную в шаге 2.1 команду
+```bash
+ kubeadm join 85.239.53.102:6443 --token 3bwvyf.n7krgs7cpq62aalu \
+--discovery-token-ca-cert-hash sha256:acf4df6056c7fa6f9de57bf1086b6565ef0a996b8752cadd6bf99f4526f1076c 
+```
 
 
 
