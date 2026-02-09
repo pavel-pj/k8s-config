@@ -1,5 +1,4 @@
 # Запрашиваем имя ноды
-sudo hostnamectl set-hostname master-k8s
 read -p "Введите имя ноды (например node-01): " NODE_NAME
 
 # Проверяем ввод
@@ -15,10 +14,10 @@ if [ \"\\\$color_prompt\" = yes ]; then\n\
 else\n\
     PS1='\\\${debian_chroot:+(\\\$debian_chroot)}\\\\\\\\u@$NODE_NAME:\\\\\\\\w\\\\\\\\\\\\\$ '\n\
 fi" ~/.bashrc
-
 # Применяем изменения
 source ~/.bashrc
 echo "Готово! Теперь приглашение: user@$NODE_NAME"
+sudo hostnamectl set-hostname $NODE_NAME
 
 sudo apt update -y
 sudo apt upgrade -y
@@ -57,20 +56,7 @@ echo 'deb [signed-by=/etc/apt/keyrings/kubernetes-apt-keyring.gpg] https://pkgs.
 sudo apt-get update
 
 sudo apt-get install -y kubelet=1.35.0-* kubeadm=1.35.0-* kubectl=1.35.0-*
+ 
 
-sudo kubeadm init \
---pod-network-cidr=10.244.0.0/16 \
---cri-socket=unix:///var/run/containerd/containerd.sock \
---ignore-preflight-errors=Port-6443 \
---upload-certs
-
-mkdir -p $HOME/.kube
-sudo cp -i /etc/kubernetes/admin.conf $HOME/.kube/config
-sudo chown $(id -u):$(id -g) $HOME/.kube/config
-echo "export KUBECONFIG=$HOME/.kube/config" >> ~/.bashrc
-source ~/.bashrc
-
-kubectl apply -f https://github.com/flannel-io/flannel/releases/latest/download/kube-flannel.yml
-
-
+ 
  
