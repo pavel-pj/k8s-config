@@ -1,5 +1,11 @@
 # Развертывание кластера Kubernetes
 
+# Автоматическая настройка
+#### На мастер ноде запустить ./scripts/master.sh
+Проверяем : ШАГ 2.4
+
+
+# Ручная настройка 
 ## 1. ВСЕ НОДЫ кластера
 
 ### Инструкция:
@@ -7,6 +13,11 @@ https://kubernetes.io/docs/tasks/tools/install-kubectl-linux/
 
 
 #### На докере требуются дополнительные настройки. Лучше контейнеризировать через containerd
+
+```bash
+sudo apt update -y
+sudo apt upgrade -y
+```
 
 ##### установка containerd 
 ```bash
@@ -157,4 +168,5 @@ sudo crictl ps
 
 
 
- 
+ kubeadm join 46.173.18.173:6443 --token uvw88v.d1ehi0h17xzbd8zd \
+	--discovery-token-ca-cert-hash sha256:20ca9998a598eaf8907d613e9108ffd9b722de3d99e7d5d333df60f1e829202d 
