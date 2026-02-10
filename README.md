@@ -118,6 +118,13 @@ kubeadm join 85.239.53.102:6443 --token 3bwvyf.n7krgs7cpq62aalu \
 --discovery-token-ca-cert-hash sha256:acf4df6056c7fa6f9de57bf1086b6565ef0a996b8752cadd6bf99f4526f1076c 
 ```
  
+###### установка helm
+```bash
+curl -fsSL -o get_helm.sh https://raw.githubusercontent.com/helm/helm/main/scripts/get-helm-4
+chmod 700 get_helm.sh
+./get_helm.sh
+```
+
 
 #### Шаг 2.2: Настройка kubectl
 ```bash
@@ -215,7 +222,7 @@ metadata:
 provisioner: driver.longhorn.io
 allowVolumeExpansion: true
 parameters:
-  numberOfReplicas: "2"
+  numberOfReplicas: "1"
   staleReplicaTimeout: "2880" # 48 часов в минутах
   fromBackup: ""
 
