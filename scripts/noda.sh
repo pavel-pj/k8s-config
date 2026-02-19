@@ -7,6 +7,7 @@ if [ -z "$NODE_NAME" ]; then
     exit 1
 fi
 
+
 # Ищем и заменяем блок PS1 в .bashrc
 sed -i "/if \[ \"\\\$color_prompt\" = yes \]; then/,/^fi$/c\
 if [ \"\\\$color_prompt\" = yes ]; then\n\
