@@ -1,0 +1,208 @@
+# Secret для Laravel
+apiVersion: v1
+kind: Secret
+metadata:
+  name: laravel-secrets
+type: Opaque
+stringData:
+  DB_DATABASE: testdb
+  DB_USERNAME: testuser
+  DB_PASSWORD: testpass123
+  APP_KEY: base64:QmO1WmPWvZdW2ZLLdgDKTcCXGt1dpY0ykWPXxGk3NxI=
+---
+# ConfigMap для конфигурации
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: laravel-config
+data:
+  APP_NAME: "Laravel"
+  APP_ENV: "production"
+  APP_DEBUG: "false"
+  APP_URL: "http://ircx.ru"  
+  DB_CONNECTION: "pgsql"
+  DB_HOST: "postgres-service"   
+  DB_PORT: "5432"
+---
+# Deployment для Laravel с nginx + php-fpm
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: laravel-app
+  labels:
+    app: laravel
+spec:
+  replicas: 3  
+  selector:
+    matchLabels:
+      app: laravel
+  template:
+    metadata:
+      labels:
+        app: laravel
+    spec:
+      initContainers:
+      - name: copy-files
+        image: user99430e/laravel-app:v5
+        command: ["sh", "-c", "cp -r /var/www/html/. /shared/ && chown -R 82:82 /shared"] 
+        volumeMounts:
+        - name: shared-files
+          mountPath: /shared
+      containers:
+      - name: nginx
+        image: nginx:alpine
+        ports:
+        - containerPort: 80
+          name: http
+        volumeMounts:
+        - name: nginx-config
+          mountPath: /etc/nginx/conf.d
+        - name: shared-files
+          mountPath: /var/www/html
+        readinessProbe:
+          httpGet:
+            path: /health
+            port: 80
+          initialDelaySeconds: 10
+          periodSeconds: 5
+          
+      - name: php-fpm
+        image: user99430e/laravel-app:v5 
+        imagePullPolicy: Always
+        ports:
+        - containerPort: 9000
+          name: fpm
+        env:
+        # Из ConfigMap
+        - name: APP_NAME
+          valueFrom:
+            configMapKeyRef:
+              name: laravel-config
+              key: APP_NAME
+        - name: APP_ENV
+          valueFrom:
+            configMapKeyRef:
+              name: laravel-config
+              key: APP_ENV
+        - name: APP_DEBUG
+          valueFrom:
+            configMapKeyRef:
+              name: laravel-config
+              key: APP_DEBUG
+        - name: APP_URL
+          valueFrom:
+            configMapKeyRef:
+              name: laravel-config
+              key: APP_URL
+        - name: DB_CONNECTION
+          valueFrom:
+            configMapKeyRef:
+              name: laravel-config
+              key: DB_CONNECTION
+        - name: DB_HOST
+          valueFrom:
+            configMapKeyRef:
+              name: laravel-config
+              key: DB_HOST
+        - name: DB_PORT
+          valueFrom:
+            configMapKeyRef:
+              name: laravel-config
+              key: DB_PORT
+        # Из Secret
+        - name: DB_DATABASE
+          valueFrom:
+            secretKeyRef:
+              name: laravel-secrets
+              key: DB_DATABASE
+        - name: DB_USERNAME
+          valueFrom:
+            secretKeyRef:
+              name: laravel-secrets
+              key: DB_USERNAME
+        - name: DB_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: laravel-secrets
+              key: DB_PASSWORD
+        - name: APP_KEY
+          valueFrom:
+            secretKeyRef:
+              name: laravel-secrets
+              key: APP_KEY
+        resources:
+          requests:
+            memory: "256Mi"
+            cpu: "100m"
+          limits:
+            memory: "512Mi"
+            cpu: "200m"
+        volumeMounts:
+        - name: shared-files
+          mountPath: /var/www/html
+        readinessProbe:
+          exec:
+            command:
+            - php
+            - artisan
+            - --version
+          initialDelaySeconds: 10
+          periodSeconds: 5
+          
+      volumes:
+      - name: nginx-config
+        configMap:
+          name: nginx-config
+      - name: shared-files
+        emptyDir: {}
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: nginx-config
+data:
+  default.conf: |
+    server {
+        listen 80;
+        server_name _;
+        root /var/www/html/public;
+        index index.php index.html;
+        
+        location / {
+            try_files $uri $uri/ /index.php?$query_string;
+        }
+        
+        location ~ \.php$ {
+            fastcgi_pass 127.0.0.1:9000;
+            fastcgi_index index.php;
+            fastcgi_param SCRIPT_FILENAME $document_root$fastcgi_script_name;
+            include fastcgi_params;
+            
+            fastcgi_param QUERY_STRING $query_string;
+            fastcgi_param REQUEST_METHOD $request_method;
+            fastcgi_param CONTENT_TYPE $content_type;
+            fastcgi_param CONTENT_LENGTH $content_length;
+            fastcgi_param REQUEST_URI $request_uri;
+            fastcgi_param PATH_INFO $fastcgi_path_info;
+            fastcgi_param HTTPS $https if_not_empty;
+        }
+        
+        location = /health {
+            access_log off;
+            return 200 "healthy\n";
+            add_header Content-Type text/plain;
+        }
+    }          
+---
+# Service для доступа к Laravel
+apiVersion: v1
+kind: Service
+metadata:
+  name: laravel-service
+spec:
+  selector:
+    app: laravel
+  ports:
+  - port: 80
+    targetPort: 80  # Теперь указываем на порт nginx, а не php-fpm
+  type: ClusterIP

@@ -174,11 +174,29 @@ sudo crictl ps
 
 
 
+-----------------------------------------------------------------------------
+## Настройка балансировщика :
+```bash 
+ kubectl apply -f https://raw.githubusercontent.com/kubernetes/ingress-nginx/controller-v1.8.1/deploy/static/provider/baremetal/deploy.yaml
+```
+#### Найдите строку type: NodePort и измените на type: LoadBalancer. Сохраните и выйдите.
+```bash
+kubectl edit svc -n ingress-nginx ingress-nginx-controller
+```
 
- kubeadm join 46.173.18.173:6443 --token uvw88v.d1ehi0h17xzbd8zd \
-	--discovery-token-ca-cert-hash sha256:20ca9998a598eaf8907d613e9108ffd9b722de3d99e7d5d333df60f1e829202d 
+##### проверить :
+```bash
+kubectl get svc -n ingress-nginx
+```
 
+#### Установка MetalLB для bare-metal кластеров
+##### MetalLB - это решение для bare-metal кластеров, которое будет назначать внешние IP вашим LoadBalancer сервисам
 
+```bash
+kubectl apply -f https://raw.githubusercontent.com/metallb/metallb/v0.13.12/config/manifests/metallb-native.yaml
+```
 
-
- 
+##### проверка: 
+```bash
+kubectl get pods -n metallb-system -w
+```
